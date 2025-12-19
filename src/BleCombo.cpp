@@ -26,3 +26,19 @@ void BleCombo::k_releaseAll() {
 void BleCombo::k_write(uint8_t k) {
     _bleKeyboard.write(k);
 }
+
+void BleCombo::m_click(uint8_t b) {
+    _bleKeyboard.click(b);
+}
+
+void BleCombo::m_press(uint8_t b) {
+    _bleKeyboard.press(b);
+}
+
+void BleCombo::m_release(uint8_t b) {
+    _bleKeyboard.release(b);
+}
+
+void BleCombo::m_move(int8_t x, int8_t y) {
+    _bleKeyboard.move(x, y);
+}

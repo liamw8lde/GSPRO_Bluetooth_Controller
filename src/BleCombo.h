@@ -20,6 +20,11 @@
 #define KEY_RIGHT_ARROW 0xD7
 #define KEY_F5          0xC6
 
+// Mouse Buttons
+#define MOUSE_LEFT      0x01
+#define MOUSE_RIGHT     0x02
+#define MOUSE_MIDDLE    0x04
+
 class BleCombo {
 public:
     BleCombo(std::string name = "GSPRO Controller");
@@ -32,11 +37,11 @@ public:
     void k_write(uint8_t k);
     void k_releaseAll();
 
-    // Mouse (Stubs to keep main.cpp happy)
-    void m_click(uint8_t b) {}
-    void m_press(uint8_t b) {}
-    void m_release(uint8_t b) {}
-    void m_move(int8_t x, int8_t y) {}
+    // Mouse
+    void m_click(uint8_t b);
+    void m_press(uint8_t b);
+    void m_release(uint8_t b);
+    void m_move(int8_t x, int8_t y);
 
 private:
     BleKeyboard _bleKeyboard;
