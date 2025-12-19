@@ -19,6 +19,7 @@ Touch touch;
 
 // Forward Declaration
 void load_main_ui();
+void load_touchpad_ui();
 
 /* Debug & Status globals */
 static lv_obj_t * volatile g_status_label = NULL;
@@ -284,6 +285,197 @@ void load_main_ui() {
 
     static KeyMap kmTeeR = {"Tee R", 'v', 0, true}; // Init struct correctly
     create_custom_btn(scr, NULL, "Tee R", 370, 225, 95, 50, &kmTeeR, &style_btn_nav);
+
+    // Mouse/Touchpad Button (Bottom Center)
+    lv_obj_t *btn_mouse = lv_btn_create(scr);
+    lv_obj_set_size(btn_mouse, 200, 60);
+    lv_obj_align(btn_mouse, LV_ALIGN_BOTTOM_MID, 0, -5);
+    lv_obj_add_style(btn_mouse, &style_btn_action, 0);
+    lv_obj_add_event_cb(btn_mouse, touchpad_btn_event_handler, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t *lbl_mouse = lv_label_create(btn_mouse);
+    lv_label_set_text(lbl_mouse, LV_SYMBOL_SETTINGS " TOUCHPAD");
+    lv_obj_set_style_text_color(lbl_mouse, lv_color_white(), 0);
+    lv_obj_center(lbl_mouse);
+    lv_obj_clear_flag(lbl_mouse, LV_OBJ_FLAG_CLICKABLE);
+}
+
+/* Touchpad UI */
+static struct {
+    int16_t last_x = -1;
+    int16_t last_y = -1;
+} touchpad_state;
+
+void touchpad_event_handler(lv_event_t *e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t *touchpad = lv_event_get_target(e);
+
+    if (!bleCombo.isConnected()) return;
+
+    if (code == LV_EVENT_PRESSED || code == LV_EVENT_PRESSING) {
+        lv_indev_t *indev = lv_indev_get_act();
+        lv_point_t point;
+        lv_indev_get_point(indev, &point);
+
+        if (touchpad_state.last_x != -1 && touchpad_state.last_y != -1) {
+            int16_t dx = point.x - touchpad_state.last_x;
+            int16_t dy = point.y - touchpad_state.last_y;
+
+            // Scale the movement for better control
+            int8_t mouse_dx = constrain(dx / 2, -127, 127);
+            int8_t mouse_dy = constrain(dy / 2, -127, 127);
+
+            if (mouse_dx != 0 || mouse_dy != 0) {
+                bleCombo.m_move(mouse_dx, mouse_dy);
+            }
+        }
+
+        touchpad_state.last_x = point.x;
+        touchpad_state.last_y = point.y;
+    } else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
+        touchpad_state.last_x = -1;
+        touchpad_state.last_y = -1;
+    }
+}
+
+void mouse_btn_event_handler(lv_event_t *e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    uint8_t *btn = (uint8_t *)lv_event_get_user_data(e);
+
+    if (!bleCombo.isConnected()) return;
+
+    if (code == LV_EVENT_PRESSED) {
+        bleCombo.m_press(*btn);
+        if (g_status_label) lv_label_set_text_fmt(g_status_label, "Mouse %s Pressed", (*btn == MOUSE_LEFT) ? "Left" : "Right");
+    } else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
+        bleCombo.m_release(*btn);
+        if (g_status_label) lv_label_set_text(g_status_label, "Mouse Released");
+    }
+}
+
+void back_btn_event_handler(lv_event_t *e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_CLICKED) {
+        load_main_ui();
+    }
+}
+
+void touchpad_btn_event_handler(lv_event_t *e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_CLICKED) {
+        load_touchpad_ui();
+    }
+}
+
+void load_touchpad_ui() {
+    lv_obj_t *scr = lv_scr_act();
+    lv_obj_clean(scr);
+    lv_obj_add_style(scr, &style_scr, 0);
+
+    // Reset touchpad state
+    touchpad_state.last_x = -1;
+    touchpad_state.last_y = -1;
+
+    // Header Bar
+    lv_obj_t *header = lv_obj_create(scr);
+    lv_obj_set_size(header, 480, 40);
+    lv_obj_align(header, LV_ALIGN_TOP_MID, 0, 0);
+    lv_obj_set_style_bg_color(header, lv_color_hex(0x1F1F1F), 0);
+    lv_obj_set_style_border_side(header, LV_BORDER_SIDE_BOTTOM, 0);
+    lv_obj_set_style_border_width(header, 2, 0);
+    lv_obj_set_style_border_color(header, lv_color_hex(0x4CAF50), 0);
+    lv_obj_set_scrollbar_mode(header, LV_SCROLLBAR_MODE_OFF);
+
+    // Logo Text in Header
+    lv_obj_t *logo_gs = lv_label_create(header);
+    lv_label_set_text(logo_gs, "#4CAF50 GS# #FFFFFF PRO# - Touchpad");
+    lv_label_set_recolor(logo_gs, true);
+    lv_obj_align(logo_gs, LV_ALIGN_LEFT_MID, 10, 0);
+
+    // Status Label in Header
+    g_status_label = lv_label_create(header);
+    lv_label_set_text(g_status_label, "Touchpad Ready");
+    lv_obj_align(g_status_label, LV_ALIGN_CENTER, 0, 0);
+
+    // Timer to update header status
+    if (g_status_timer) lv_timer_del(g_status_timer);
+    g_status_timer = lv_timer_create([](lv_timer_t * t) {
+        bool connected = bleCombo.isConnected();
+
+        if (g_status_label && lv_obj_is_valid(g_status_label)) {
+            if(connected) {
+                lv_label_set_text(g_status_label, "BT Connected");
+                lv_obj_set_style_text_color(g_status_label, lv_color_hex(0x4CAF50), 0);
+            } else {
+                lv_label_set_text(g_status_label, "BT Disconnected");
+                lv_obj_set_style_text_color(g_status_label, lv_color_hex(0xF44336), 0);
+            }
+        }
+    }, 1000, NULL);
+
+    // Touchpad Area (Large touch-sensitive area)
+    lv_obj_t *touchpad = lv_obj_create(scr);
+    lv_obj_set_size(touchpad, 460, 190);
+    lv_obj_align(touchpad, LV_ALIGN_TOP_MID, 0, 50);
+    lv_obj_set_style_bg_color(touchpad, lv_color_hex(0x2a2a2a), 0);
+    lv_obj_set_style_border_color(touchpad, lv_color_hex(0x00E676), 0);
+    lv_obj_set_style_border_width(touchpad, 3, 0);
+    lv_obj_set_style_radius(touchpad, 12, 0);
+    lv_obj_add_event_cb(touchpad, touchpad_event_handler, LV_EVENT_ALL, NULL);
+    lv_obj_clear_flag(touchpad, LV_OBJ_FLAG_SCROLLABLE);
+
+    // Touchpad Label
+    lv_obj_t *touchpad_label = lv_label_create(touchpad);
+    lv_label_set_text(touchpad_label, "TOUCHPAD\nMove your finger here");
+    lv_obj_set_style_text_align(touchpad_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_color(touchpad_label, lv_color_hex(0x888888), 0);
+    lv_obj_center(touchpad_label);
+    lv_obj_clear_flag(touchpad_label, LV_OBJ_FLAG_CLICKABLE);
+
+    // Button container at the bottom
+    static uint8_t mouse_left = MOUSE_LEFT;
+    static uint8_t mouse_right = MOUSE_RIGHT;
+
+    // Left Click Button
+    lv_obj_t *btn_left = lv_btn_create(scr);
+    lv_obj_set_size(btn_left, 140, 60);
+    lv_obj_align(btn_left, LV_ALIGN_BOTTOM_LEFT, 20, -10);
+    lv_obj_add_style(btn_left, &style_btn_action, 0);
+    lv_obj_add_event_cb(btn_left, mouse_btn_event_handler, LV_EVENT_ALL, &mouse_left);
+
+    lv_obj_t *lbl_left = lv_label_create(btn_left);
+    lv_label_set_text(lbl_left, "LEFT\nCLICK");
+    lv_obj_set_style_text_align(lbl_left, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_color(lbl_left, lv_color_white(), 0);
+    lv_obj_center(lbl_left);
+    lv_obj_clear_flag(lbl_left, LV_OBJ_FLAG_CLICKABLE);
+
+    // Right Click Button
+    lv_obj_t *btn_right = lv_btn_create(scr);
+    lv_obj_set_size(btn_right, 140, 60);
+    lv_obj_align(btn_right, LV_ALIGN_BOTTOM_MID, 0, -10);
+    lv_obj_add_style(btn_right, &style_btn_action, 0);
+    lv_obj_add_event_cb(btn_right, mouse_btn_event_handler, LV_EVENT_ALL, &mouse_right);
+
+    lv_obj_t *lbl_right = lv_label_create(btn_right);
+    lv_label_set_text(lbl_right, "RIGHT\nCLICK");
+    lv_obj_set_style_text_align(lbl_right, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_color(lbl_right, lv_color_white(), 0);
+    lv_obj_center(lbl_right);
+    lv_obj_clear_flag(lbl_right, LV_OBJ_FLAG_CLICKABLE);
+
+    // Back Button
+    lv_obj_t *btn_back = lv_btn_create(scr);
+    lv_obj_set_size(btn_back, 140, 60);
+    lv_obj_align(btn_back, LV_ALIGN_BOTTOM_RIGHT, -20, -10);
+    lv_obj_add_style(btn_back, &style_btn_nav, 0);
+    lv_obj_add_event_cb(btn_back, back_btn_event_handler, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t *lbl_back = lv_label_create(btn_back);
+    lv_label_set_text(lbl_back, LV_SYMBOL_LEFT " BACK");
+    lv_obj_set_style_text_color(lbl_back, lv_color_white(), 0);
+    lv_obj_center(lbl_back);
+    lv_obj_clear_flag(lbl_back, LV_OBJ_FLAG_CLICKABLE);
 }
 
 void show_splash_screen() {
