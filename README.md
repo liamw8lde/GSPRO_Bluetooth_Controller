@@ -24,8 +24,17 @@ A custom ESP32-based touch screen controller for the GSPRO Golf Simulator. This 
 
 ## 🔧 Installation & Setup
 
-### 1. Install PlatformIO CLI
-If you don't have PlatformIO installed, you can install the Core CLI using PowerShell:
+### Option A: Visual Studio Code (Recommended)
+1. Download and install [Visual Studio Code](https://code.visualstudio.com/).
+2. Open VS Code and go to the **Extensions** view (Ctrl+Shift+X).
+3. Search for and install the **PlatformIO IDE** extension.
+4. Clone this repository or open the project folder in VS Code.
+5. Wait for PlatformIO to initialize and download dependencies.
+6. Connect your ESP32 via USB.
+7. Click the **PlatformIO: Upload** button (arrow icon) in the bottom status bar.
+
+### Option B: PlatformIO CLI
+If you prefer the command line, you can install the Core CLI using PowerShell:
 
 ```powershell
 # Download the installer
