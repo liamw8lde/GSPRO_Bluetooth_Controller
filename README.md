@@ -22,20 +22,41 @@ A custom ESP32-based touch screen controller for the GSPRO Golf Simulator. This 
 - **Display:** 3.5" 480x320 Capacitive Touch Screen (WT32-SC01).
 - **Backlight Control:** Integrated PWM control.
 
-## 🔧 Installation
+## 🔧 Installation & Setup
 
-Built using **PlatformIO**.
+### 1. Install PlatformIO CLI
+If you don't have PlatformIO installed, you can install the Core CLI using PowerShell:
 
-1. Clone this repository.
-2. Install the following libraries (automatically handled by PlatformIO):
-   - `T-vK/ESP32 BLE Keyboard`
-   - `lvgl/lvgl`
-   - `bodmer/TFT_eSPI`
-   - `h2zero/NimBLE-Arduino`
-3. Connect your ESP32 and run:
-   ```bash
-   platformio run --target upload
-   ```
+```powershell
+# Download the installer
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/platformio/platformio-core-installer/master/get-platformio.py -OutFile get-platformio.py
+
+# Run the installer
+python get-platformio.py
+
+# Add to PATH (standard path)
+$env:PATH += ";$env:USERPROFILE\.platformio\penv\Scripts"
+```
+
+### 2. Clone and Build
+```bash
+# Clone the repo
+git clone https://github.com/liamw8lde/GSPRO_Bluetooth_Controller.git
+cd GSPRO_Bluetooth_Controller
+
+# Build and Upload to your ESP32
+# Replace 'pio' with the full path if not in your PATH yet
+pio run --target upload
+```
+
+### 3. Windows Bluetooth Connection
+1. Power on your ESP32 device.
+2. Open **Windows Settings > Bluetooth & Devices**.
+3. Click **Add Device**.
+4. Select **GSPRO Controller** from the list.
+5. Once paired, Windows will automatically install it as a standard HID Keyboard.
+
+---
 
 ## 📋 Windows "Driver Error" Fixes
 
